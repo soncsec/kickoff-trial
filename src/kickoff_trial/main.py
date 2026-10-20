@@ -2,10 +2,10 @@
 
 from dataclasses import asdict
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Self
 
-from fastapi import FastAPI, status
-from pydantic import BaseModel, ConfigDict, Field
+from fastapi import FastAPI, HTTPException, status
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from kickoff_trial.storage import TaskStore, db_path
 
@@ -18,6 +18,24 @@ class TaskCreate(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
 
     title: Title
+
+
+class TaskUpdate(BaseModel):
+    """What a client sends to change a task: at least one field, and no nulls."""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    title: Title | None = None
+    done: bool | None = None
+
+    @model_validator(mode="after")
+    def check_fields(self) -> Self:
+        if not self.model_fields_set:
+            raise ValueError("send at least one of: title, done")
+        for name in self.model_fields_set:
+            if getattr(self, name) is None:
+                raise ValueError(f"{name} cannot be null")
+        return self
 
 
 class TaskOut(BaseModel):
@@ -43,5 +61,19 @@ def create_app(database: Path | str | None = None) -> FastAPI:
     @app.get("/tasks")
     def list_tasks() -> list[TaskOut]:
         return [TaskOut(**asdict(t)) for t in store.list()]
+
+    @app.get("/tasks/{task_id}")
+    def get_task(task_id: int) -> TaskOut:
+        found = store.get(task_id)
+        if found is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Task not found")
+        return TaskOut(**asdict(found))
+
+    @app.patch("/tasks/{task_id}")
+    def update_task(task_id: int, changes: TaskUpdate) -> TaskOut:
+        updated = store.update(task_id, title=changes.title, done=changes.done)
+        if updated is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Task not found")
+        return TaskOut(**asdict(updated))
 
     return app
