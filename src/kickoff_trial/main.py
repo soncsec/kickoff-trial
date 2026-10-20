@@ -76,4 +76,9 @@ def create_app(database: Path | str | None = None) -> FastAPI:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Task not found")
         return TaskOut(**asdict(updated))
 
+    @app.delete("/tasks/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
+    def delete_task(task_id: int) -> None:
+        if not store.delete(task_id):
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Task not found")
+
     return app
