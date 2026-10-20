@@ -42,8 +42,7 @@ Status is one of: **Mitigated** (in place and tested), **Planned #<issue>** (an
 issue labeled `security` tracks it), or **Accepted** (the operator chose to live
 with it; say why).
 
-T3 and T4 become Mitigated once the task features land with their tests; their
-acceptance criteria include those tests.
+T3 is tested in `tests/test_storage.py` and T4 in `tests/test_tasks_api.py`.
 
 ## Covered by the harness
 
