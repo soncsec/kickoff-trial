@@ -26,12 +26,16 @@ Early development. [ROADMAP.md](ROADMAP.md) has what comes next.
 
 ## Getting started
 
-<!-- The walking skeleton fills in how to run the server. -->
+You need [uv](https://docs.astral.sh/uv/) and `make`.
 
 ```sh
 make setup   # install dependencies exactly as locked
 make check   # lint, tests and scans: what CI runs
+make run     # serve the API on http://127.0.0.1:8000
 ```
+
+Then `curl http://127.0.0.1:8000/health` returns `{"status":"ok"}`.
+The server listens on localhost only; see [ADR 0004](docs/adr/0004-localhost-without-sign-in.md).
 
 ## Documentation
 
