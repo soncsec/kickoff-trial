@@ -1,6 +1,11 @@
 # kickoff-trial
 
-TODO: describe this project in one line.
+A small to-do list HTTP API (create, list, complete, delete tasks) for a single
+user on their own machine. Its purpose is a trial run of the claude-harness
+workflow: success is the first milestone merged through issues, PRs and green CI.
+No sign-in, no deployment, no web UI, no external services.
+
+Data handled: none sensitive.
 
 <!-- Installed by claude-harness. This file is loaded into every Claude Code
      session, so keep it short and link out to longer docs. -->
