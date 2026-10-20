@@ -11,4 +11,5 @@
 #   source:  folders to measure, relative to that project
 #   minimum: fail below this percentage of covered lines
 projects = [
+  { path = ".", source = ["src"], minimum = 80 },
 ]
