@@ -15,3 +15,8 @@
 # Per-project tool caches (see the Makefile)
 .cache/
 # <<< claude-harness <<<
+
+# Python
+.venv/
+__pycache__/
+dist/
