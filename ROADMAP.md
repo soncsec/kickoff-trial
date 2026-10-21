@@ -22,6 +22,7 @@ Tasks can have an optional due date, and overdue tasks can be listed.
 ## Not planned
 
 - Accounts or sign-in: one local user.
-- Deployment: it runs on the operator's machine only.
+- Public exposure: deployed copies are reachable only from the server itself,
+  until sign-in exists.
 - Web pages or a frontend: HTTP API only.
 - External services or secrets.

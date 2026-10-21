@@ -41,8 +41,10 @@ Invalid input gets `422` with FastAPI's standard error body.
 
 ## Security boundaries
 
-Untrusted input enters only through the HTTP API, which binds to `127.0.0.1`.
-There is no sign-in: anyone who can reach localhost on this machine is trusted.
+Untrusted input enters only through the HTTP API, which is reachable from
+localhost only: `make run` binds `127.0.0.1`, and a deployed container is
+published on the server's `127.0.0.1` (ADR 0007). There is no sign-in: anyone
+who can reach localhost on that machine is trusted.
 Input is validated by Pydantic models, and every SQL statement is
 parameterised. There are no secrets. The details are in the
 [threat model](threat-model.md).
@@ -51,7 +53,13 @@ parameterised. There are no secrets. The details are in the
 
 - **Local:** `make run` starts the server on `127.0.0.1`.
 - **CI:** `make check` (lint, tests, scans) runs on every pull request.
-- **Staging and production:** none; this project is not deployed.
+- **Container image:** `make container-context` writes `dist/*.whl` and a
+  hashed `requirements.txt`; the `Containerfile` installs them and runs uvicorn
+  on `0.0.0.0:$PORT` as an unprivileged user, with the database at
+  `/data/todo.db` in the writable `/data` volume.
+- **Servers:** the harness deploy path ships the image. Each server publishes the
+  port on `127.0.0.1` only, with no reverse proxy, so only the server itself can
+  reach the app ([ADR 0007](adr/0007-container-deploy-without-public-exposure.md)).
 
 ## Testing
 

@@ -16,7 +16,8 @@ issue → pull request → green CI, with no guardrail violations.
 ## Non-goals
 
 - No accounts or sign-in: one local user.
-- No deployment: it runs on the operator's machine only.
+- No public exposure: it runs on the operator's machine, or on their server
+  published on that server's localhost only ([ADR 0007](docs/adr/0007-container-deploy-without-public-exposure.md)).
 - No web pages or frontend: HTTP API only.
 - No external services or secrets.
 

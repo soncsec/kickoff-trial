@@ -1,6 +1,6 @@
 # 0004. Listen on localhost only, with no sign-in
 
-- Status: Accepted
+- Status: Accepted; replaced for the container image by [0007](0007-container-deploy-without-public-exposure.md)
 - Date: 2026-10-20
 - Decided by: the operator, during kickoff
 

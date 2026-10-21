@@ -20,4 +20,6 @@
 .venv/
 __pycache__/
 dist/
+# Written by make container-context
+requirements.txt
 todo.db
