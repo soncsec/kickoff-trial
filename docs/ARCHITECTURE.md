@@ -32,7 +32,7 @@ until deleted. Nothing in it is sensitive.
 | --- | --- |
 | `GET /health` | Returns `{"status": "ok"}` |
 | `POST /tasks` | Creates a task from `{"title": "...", "due_date": "YYYY-MM-DD"}` (`due_date` optional); returns it with `201` |
-| `GET /tasks` | Lists all tasks, oldest first; `?done=true` or `?done=false` lists only done or open tasks; `?sort=newest` lists newest first (`oldest` is the default) |
+| `GET /tasks` | Lists all tasks, oldest first; `?done=true` or `?done=false` lists only done or open tasks; `?overdue=true` lists tasks not done and due before today (server local time), `?overdue=false` the rest; `?sort=newest` lists newest first (`oldest` is the default). Filters combine |
 | `GET /tasks/{id}` | Returns one task, or `404` |
 | `PATCH /tasks/{id}` | Updates `title`, `done` and/or `due_date` (`"due_date": null` clears it); returns the task, or `404` |
 | `DELETE /tasks/{id}` | Deletes a task; `204`, or `404` |
