@@ -5,11 +5,19 @@ from pathlib import Path
 from typing import Annotated, Literal, Self
 
 from fastapi import FastAPI, HTTPException, Query, status
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field, model_validator
 
 from kickoff_trial.storage import TaskStore, db_path
 
-Title = Annotated[str, Field(min_length=1, max_length=200)]
+
+def _not_blank(title: str) -> str:
+    """Reject titles with no visible characters; accepted titles are kept exactly as sent."""
+    if not title.strip():
+        raise ValueError("title must contain a visible character")
+    return title
+
+
+Title = Annotated[str, Field(min_length=1, max_length=200), AfterValidator(_not_blank)]
 
 
 class TaskCreate(BaseModel):
