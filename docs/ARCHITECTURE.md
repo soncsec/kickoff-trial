@@ -31,7 +31,7 @@ until deleted. Nothing in it is sensitive.
 | --- | --- |
 | `GET /health` | Returns `{"status": "ok"}` |
 | `POST /tasks` | Creates a task from `{"title": "..."}`; returns it with `201` |
-| `GET /tasks` | Lists all tasks, oldest first; `?done=true` or `?done=false` lists only done or open tasks |
+| `GET /tasks` | Lists all tasks, oldest first; `?done=true` or `?done=false` lists only done or open tasks; `?sort=newest` lists newest first (`oldest` is the default) |
 | `GET /tasks/{id}` | Returns one task, or `404` |
 | `PATCH /tasks/{id}` | Updates `title` and/or `done`; returns the task, or `404` |
 | `DELETE /tasks/{id}` | Deletes a task; `204`, or `404` |
