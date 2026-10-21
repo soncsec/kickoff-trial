@@ -68,10 +68,14 @@ class TaskStore:
             ).fetchone()
         return _to_task(row)
 
-    def list(self) -> list[Task]:
+    def list(self, *, done: bool | None = None) -> list[Task]:
+        """All tasks oldest first, or only those whose `done` matches."""
+        flag = None if done is None else int(done)
         with self._connect() as conn:
             rows = conn.execute(
-                "SELECT id, title, done, created_at FROM tasks ORDER BY id"
+                "SELECT id, title, done, created_at FROM tasks"
+                " WHERE (? IS NULL OR done = ?) ORDER BY id",
+                (flag, flag),
             ).fetchall()
         return [_to_task(row) for row in rows]
 
