@@ -2,9 +2,9 @@
 
 from dataclasses import asdict
 from pathlib import Path
-from typing import Annotated, Self
+from typing import Annotated, Literal, Self
 
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from kickoff_trial.storage import TaskStore, db_path
@@ -59,8 +59,12 @@ def create_app(database: Path | str | None = None) -> FastAPI:
         return TaskOut(**asdict(store.add(task.title)))
 
     @app.get("/tasks")
-    def list_tasks() -> list[TaskOut]:
-        return [TaskOut(**asdict(t)) for t in store.list()]
+    def list_tasks(
+        # Exactly "true" or "false": FastAPI's bool would also accept yes, 1, on.
+        done: Annotated[Literal["true", "false"] | None, Query()] = None,
+    ) -> list[TaskOut]:
+        flag = None if done is None else done == "true"
+        return [TaskOut(**asdict(t)) for t in store.list(done=flag)]
 
     @app.get("/tasks/{task_id}")
     def get_task(task_id: int) -> TaskOut:
