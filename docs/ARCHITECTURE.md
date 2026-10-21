@@ -20,7 +20,8 @@ temporary database.
 
 ## Data
 
-One table of tasks: id, title (1–200 characters), done flag, and created time.
+One table of tasks: id, title (1–200 characters), done flag, created time, and an
+optional due date (a calendar date; see [ADR 0006](adr/0006-due-dates.md)).
 It lives in a SQLite file whose path comes from the `TODO_DB_PATH` setting
 (default `todo.db` in the working directory, ignored by git). Tasks are kept
 until deleted. Nothing in it is sensitive.
