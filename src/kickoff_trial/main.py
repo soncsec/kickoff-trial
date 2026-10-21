@@ -70,9 +70,11 @@ def create_app(database: Path | str | None = None) -> FastAPI:
     def list_tasks(
         # Exactly "true" or "false": FastAPI's bool would also accept yes, 1, on.
         done: Annotated[Literal["true", "false"] | None, Query()] = None,
+        sort: Annotated[Literal["oldest", "newest"], Query()] = "oldest",
     ) -> list[TaskOut]:
         flag = None if done is None else done == "true"
-        return [TaskOut(**asdict(t)) for t in store.list(done=flag)]
+        tasks = store.list(done=flag, newest=sort == "newest")
+        return [TaskOut(**asdict(t)) for t in tasks]
 
     @app.get("/tasks/{task_id}")
     def get_task(task_id: int) -> TaskOut:

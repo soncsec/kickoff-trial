@@ -24,6 +24,13 @@ CREATE TABLE IF NOT EXISTS tasks (
 )
 """
 
+_LIST_OLDEST_FIRST = (
+    "SELECT id, title, done, created_at FROM tasks WHERE (? IS NULL OR done = ?) ORDER BY id"
+)
+_LIST_NEWEST_FIRST = (
+    "SELECT id, title, done, created_at FROM tasks WHERE (? IS NULL OR done = ?) ORDER BY id DESC"
+)
+
 
 def db_path() -> Path:
     """The database file: the `TODO_DB_PATH` setting, or `todo.db`."""
@@ -68,15 +75,16 @@ class TaskStore:
             ).fetchone()
         return _to_task(row)
 
-    def list(self, *, done: bool | None = None) -> list[Task]:
-        """All tasks oldest first, or only those whose `done` matches."""
+    def list(self, *, done: bool | None = None, newest: bool = False) -> list[Task]:
+        """All tasks, or only those whose `done` matches; oldest first unless `newest`.
+
+        The order picks one of two fixed statements, so no caller text reaches the SQL.
+        Ids grow with creation, so ordering by id is ordering by creation time.
+        """
         flag = None if done is None else int(done)
+        sql = _LIST_NEWEST_FIRST if newest else _LIST_OLDEST_FIRST
         with self._connect() as conn:
-            rows = conn.execute(
-                "SELECT id, title, done, created_at FROM tasks"
-                " WHERE (? IS NULL OR done = ?) ORDER BY id",
-                (flag, flag),
-            ).fetchall()
+            rows = conn.execute(sql, (flag, flag)).fetchall()
         return [_to_task(row) for row in rows]
 
     def get(self, task_id: int) -> Task | None:
