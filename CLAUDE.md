@@ -3,7 +3,8 @@
 A small to-do list HTTP API (create, list, complete, delete tasks) for a single
 user on their own machine. Its purpose is a trial run of the claude-harness
 workflow: success is the first milestone merged through issues, PRs and green CI.
-No sign-in, no deployment, no web UI, no external services.
+No sign-in, no public exposure (a deployed container is published on the
+server's localhost only, ADR 0007), no web UI, no external services.
 
 Data handled: none sensitive.
 
