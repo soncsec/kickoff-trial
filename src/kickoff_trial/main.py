@@ -1,13 +1,15 @@
 """The HTTP API: `create_app()` builds the FastAPI application."""
 
+import re
 from dataclasses import asdict
+from datetime import date
 from pathlib import Path
 from typing import Annotated, Literal, Self
 
 from fastapi import FastAPI, HTTPException, Query, status
-from pydantic import AfterValidator, BaseModel, ConfigDict, Field, model_validator
+from pydantic import AfterValidator, BaseModel, BeforeValidator, ConfigDict, Field, model_validator
 
-from kickoff_trial.storage import TaskStore, db_path
+from kickoff_trial.storage import UNSET, TaskStore, db_path
 
 
 def _not_blank(title: str) -> str:
@@ -19,6 +21,20 @@ def _not_blank(title: str) -> str:
 
 Title = Annotated[str, Field(min_length=1, max_length=200), AfterValidator(_not_blank)]
 
+_ISO_DATE = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}")
+
+
+def _parse_due_date(value: object) -> object:
+    """Accept only a real calendar date written as YYYY-MM-DD (ADR 0006)."""
+    if isinstance(value, date):
+        return value
+    if not isinstance(value, str) or not _ISO_DATE.fullmatch(value):
+        raise ValueError("due_date must be a date written as YYYY-MM-DD")
+    return date.fromisoformat(value)  # raises ValueError for dates like 2026-02-30
+
+
+DueDate = Annotated[date, BeforeValidator(_parse_due_date)]
+
 
 class TaskCreate(BaseModel):
     """What a client sends to create a task. Unknown fields are rejected (threat model T4)."""
@@ -26,21 +42,26 @@ class TaskCreate(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
 
     title: Title
+    due_date: DueDate | None = None
 
 
 class TaskUpdate(BaseModel):
-    """What a client sends to change a task: at least one field, and no nulls."""
+    """What a client sends to change a task: at least one field.
+
+    `"due_date": null` clears the due date; `null` for `title` or `done` is rejected.
+    """
 
     model_config = ConfigDict(extra="forbid", strict=True)
 
     title: Title | None = None
     done: bool | None = None
+    due_date: DueDate | None = None
 
     @model_validator(mode="after")
     def check_fields(self) -> Self:
         if not self.model_fields_set:
-            raise ValueError("send at least one of: title, done")
-        for name in self.model_fields_set:
+            raise ValueError("send at least one of: title, done, due_date")
+        for name in self.model_fields_set - {"due_date"}:
             if getattr(self, name) is None:
                 raise ValueError(f"{name} cannot be null")
         return self
@@ -51,6 +72,7 @@ class TaskOut(BaseModel):
     title: str
     done: bool
     created_at: str
+    due_date: date | None
 
 
 def create_app(database: Path | str | None = None) -> FastAPI:
@@ -64,7 +86,7 @@ def create_app(database: Path | str | None = None) -> FastAPI:
 
     @app.post("/tasks", status_code=status.HTTP_201_CREATED)
     def create_task(task: TaskCreate) -> TaskOut:
-        return TaskOut(**asdict(store.add(task.title)))
+        return TaskOut(**asdict(store.add(task.title, due_date=task.due_date)))
 
     @app.get("/tasks")
     def list_tasks(
@@ -85,7 +107,8 @@ def create_app(database: Path | str | None = None) -> FastAPI:
 
     @app.patch("/tasks/{task_id}")
     def update_task(task_id: int, changes: TaskUpdate) -> TaskOut:
-        updated = store.update(task_id, title=changes.title, done=changes.done)
+        due = changes.due_date if "due_date" in changes.model_fields_set else UNSET
+        updated = store.update(task_id, title=changes.title, done=changes.done, due_date=due)
         if updated is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Task not found")
         return TaskOut(**asdict(updated))
