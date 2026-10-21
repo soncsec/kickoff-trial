@@ -19,7 +19,7 @@ def test_create_task_returns_201_and_the_task(client):
 
     assert response.status_code == 201
     body = response.json()
-    assert set(body) == {"id", "title", "done", "created_at"}
+    assert set(body) == {"id", "title", "done", "created_at", "due_date"}
     assert isinstance(body["id"], int)
     assert body["title"] == "Buy milk"
     assert body["done"] is False

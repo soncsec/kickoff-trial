@@ -31,13 +31,15 @@ until deleted. Nothing in it is sensitive.
 | Method and path | What it does |
 | --- | --- |
 | `GET /health` | Returns `{"status": "ok"}` |
-| `POST /tasks` | Creates a task from `{"title": "..."}`; returns it with `201` |
+| `POST /tasks` | Creates a task from `{"title": "...", "due_date": "YYYY-MM-DD"}` (`due_date` optional); returns it with `201` |
 | `GET /tasks` | Lists all tasks, oldest first; `?done=true` or `?done=false` lists only done or open tasks; `?sort=newest` lists newest first (`oldest` is the default) |
 | `GET /tasks/{id}` | Returns one task, or `404` |
-| `PATCH /tasks/{id}` | Updates `title` and/or `done`; returns the task, or `404` |
+| `PATCH /tasks/{id}` | Updates `title`, `done` and/or `due_date` (`"due_date": null` clears it); returns the task, or `404` |
 | `DELETE /tasks/{id}` | Deletes a task; `204`, or `404` |
 
-Invalid input gets `422` with FastAPI's standard error body.
+Every task in a response has `id`, `title`, `done`, `created_at` and `due_date`
+(a `YYYY-MM-DD` string or `null`). A due date must be a real calendar date in
+exactly that form. Invalid input gets `422` with FastAPI's standard error body.
 
 ## Security boundaries
 
