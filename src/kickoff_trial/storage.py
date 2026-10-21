@@ -10,7 +10,8 @@ import sqlite3
 from collections.abc import Iterator
 from contextlib import closing, contextmanager
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
+from enum import Enum
 from pathlib import Path
 
 DEFAULT_DB_PATH = "todo.db"
@@ -20,16 +21,30 @@ CREATE TABLE IF NOT EXISTS tasks (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     title TEXT NOT NULL,
     done INTEGER NOT NULL DEFAULT 0,
-    created_at TEXT NOT NULL
+    created_at TEXT NOT NULL,
+    due_date TEXT
 )
 """
+# Databases created before due dates existed get the column once, on startup (ADR 0006).
+_ADD_DUE_DATE = "ALTER TABLE tasks ADD COLUMN due_date TEXT"
 
 _LIST_OLDEST_FIRST = (
-    "SELECT id, title, done, created_at FROM tasks WHERE (? IS NULL OR done = ?) ORDER BY id"
+    "SELECT id, title, done, created_at, due_date FROM tasks"
+    " WHERE (? IS NULL OR done = ?) ORDER BY id"
 )
 _LIST_NEWEST_FIRST = (
-    "SELECT id, title, done, created_at FROM tasks WHERE (? IS NULL OR done = ?) ORDER BY id DESC"
+    "SELECT id, title, done, created_at, due_date FROM tasks"
+    " WHERE (? IS NULL OR done = ?) ORDER BY id DESC"
 )
+
+
+class _Unset(Enum):
+    """Marks an `update` argument that was not given, as opposed to `None` (clear it)."""
+
+    UNSET = "unset"
+
+
+UNSET = _Unset.UNSET
 
 
 def db_path() -> Path:
@@ -43,12 +58,22 @@ class Task:
     title: str
     done: bool
     created_at: str
+    due_date: date | None = None
 
 
 def _to_task(row: sqlite3.Row) -> Task:
+    due = row["due_date"]
     return Task(
-        id=row["id"], title=row["title"], done=bool(row["done"]), created_at=row["created_at"]
+        id=row["id"],
+        title=row["title"],
+        done=bool(row["done"]),
+        created_at=row["created_at"],
+        due_date=date.fromisoformat(due) if due is not None else None,
     )
+
+
+def _iso(day: date | None) -> str | None:
+    return day.isoformat() if day is not None else None
 
 
 class TaskStore:
@@ -56,6 +81,9 @@ class TaskStore:
         self._path = Path(path)
         with self._connect() as conn:
             conn.execute(_SCHEMA)
+            names = {row["name"] for row in conn.execute("PRAGMA table_info(tasks)")}
+            if "due_date" not in names:
+                conn.execute(_ADD_DUE_DATE)
 
     @contextmanager
     def _connect(self) -> Iterator[sqlite3.Connection]:
@@ -65,13 +93,13 @@ class TaskStore:
             with conn:
                 yield conn
 
-    def add(self, title: str) -> Task:
+    def add(self, title: str, *, due_date: date | None = None) -> Task:
         created_at = datetime.now(UTC).isoformat()
         with self._connect() as conn:
             row = conn.execute(
-                "INSERT INTO tasks (title, done, created_at) VALUES (?, 0, ?)"
-                " RETURNING id, title, done, created_at",
-                (title, created_at),
+                "INSERT INTO tasks (title, done, created_at, due_date) VALUES (?, 0, ?, ?)"
+                " RETURNING id, title, done, created_at, due_date",
+                (title, created_at, _iso(due_date)),
             ).fetchone()
         return _to_task(row)
 
@@ -90,19 +118,32 @@ class TaskStore:
     def get(self, task_id: int) -> Task | None:
         with self._connect() as conn:
             row = conn.execute(
-                "SELECT id, title, done, created_at FROM tasks WHERE id = ?", (task_id,)
+                "SELECT id, title, done, created_at, due_date FROM tasks WHERE id = ?",
+                (task_id,),
             ).fetchone()
         return _to_task(row) if row else None
 
     def update(
-        self, task_id: int, *, title: str | None = None, done: bool | None = None
+        self,
+        task_id: int,
+        *,
+        title: str | None = None,
+        done: bool | None = None,
+        due_date: date | None | _Unset = UNSET,
     ) -> Task | None:
-        """Change the given fields; `None` leaves a field as it is."""
+        """Change the given fields.
+
+        `None` leaves `title` and `done` as they are. `due_date` is left alone unless
+        given; `None` clears it.
+        """
+        change_due = not isinstance(due_date, _Unset)
+        new_due = _iso(due_date) if change_due else None
         with self._connect() as conn:
             row = conn.execute(
-                "UPDATE tasks SET title = COALESCE(?, title), done = COALESCE(?, done)"
-                " WHERE id = ? RETURNING id, title, done, created_at",
-                (title, None if done is None else int(done), task_id),
+                "UPDATE tasks SET title = COALESCE(?, title), done = COALESCE(?, done),"
+                " due_date = CASE WHEN ? THEN ? ELSE due_date END"
+                " WHERE id = ? RETURNING id, title, done, created_at, due_date",
+                (title, None if done is None else int(done), int(change_due), new_due, task_id),
             ).fetchone()
         return _to_task(row) if row else None
 
