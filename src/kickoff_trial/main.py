@@ -1,6 +1,7 @@
 """The HTTP API: `create_app()` builds the FastAPI application."""
 
 import re
+from collections.abc import Callable
 from dataclasses import asdict
 from datetime import date
 from pathlib import Path
@@ -75,7 +76,13 @@ class TaskOut(BaseModel):
     due_date: date | None
 
 
-def create_app(database: Path | str | None = None) -> FastAPI:
+def _local_today() -> date:
+    return date.today()
+
+
+def create_app(
+    database: Path | str | None = None, today: Callable[[], date] = _local_today
+) -> FastAPI:
     """Build the app. `database` defaults to the `TODO_DB_PATH` setting; tests pass a temp file."""
     store = TaskStore(database if database is not None else db_path())
     app = FastAPI(title="kickoff-trial")
@@ -92,10 +99,12 @@ def create_app(database: Path | str | None = None) -> FastAPI:
     def list_tasks(
         # Exactly "true" or "false": FastAPI's bool would also accept yes, 1, on.
         done: Annotated[Literal["true", "false"] | None, Query()] = None,
+        overdue: Annotated[Literal["true", "false"] | None, Query()] = None,
         sort: Annotated[Literal["oldest", "newest"], Query()] = "oldest",
     ) -> list[TaskOut]:
         flag = None if done is None else done == "true"
-        tasks = store.list(done=flag, newest=sort == "newest")
+        late = None if overdue is None else overdue == "true"
+        tasks = store.list(done=flag, overdue=late, today=today(), newest=sort == "newest")
         return [TaskOut(**asdict(t)) for t in tasks]
 
     @app.get("/tasks/{task_id}")

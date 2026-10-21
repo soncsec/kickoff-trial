@@ -2,10 +2,9 @@
 
 The short version. Detail lives in GitHub milestones and issues.
 
-## Now: M3: Due dates
+## Now
 
-Tasks can have an optional due date, and overdue tasks can be listed.
-[Milestone](https://github.com/soncsec/kickoff-trial/milestone/3)
+Nothing planned yet; the operator picks the next milestone.
 
 ## Done
 
@@ -13,6 +12,8 @@ Tasks can have an optional due date, and overdue tasks can be listed.
   SQLite. [Milestone](https://github.com/soncsec/kickoff-trial/milestone/1)
 - M2: Everyday use: filter by done, sort by creation time, reject blank
   titles. [Milestone](https://github.com/soncsec/kickoff-trial/milestone/2)
+- M3: Due dates: optional due date per task, list overdue tasks.
+  [Milestone](https://github.com/soncsec/kickoff-trial/milestone/3)
 
 ## Later
 

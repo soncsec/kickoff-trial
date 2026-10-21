@@ -28,13 +28,20 @@ CREATE TABLE IF NOT EXISTS tasks (
 # Databases created before due dates existed get the column once, on startup (ADR 0006).
 _ADD_DUE_DATE = "ALTER TABLE tasks ADD COLUMN due_date TEXT"
 
+# Filters: done (NULL means any), then overdue (NULL means any). A task is overdue
+# when it is not done and its due date is before today (ADR 0006); ISO dates
+# compare correctly as text. Both statements differ only in their order.
 _LIST_OLDEST_FIRST = (
     "SELECT id, title, done, created_at, due_date FROM tasks"
-    " WHERE (? IS NULL OR done = ?) ORDER BY id"
+    " WHERE (? IS NULL OR done = ?)"
+    " AND (? IS NULL OR (done = 0 AND due_date IS NOT NULL AND due_date < ?) = ?)"
+    " ORDER BY id"
 )
 _LIST_NEWEST_FIRST = (
     "SELECT id, title, done, created_at, due_date FROM tasks"
-    " WHERE (? IS NULL OR done = ?) ORDER BY id DESC"
+    " WHERE (? IS NULL OR done = ?)"
+    " AND (? IS NULL OR (done = 0 AND due_date IS NOT NULL AND due_date < ?) = ?)"
+    " ORDER BY id DESC"
 )
 
 
@@ -103,16 +110,28 @@ class TaskStore:
             ).fetchone()
         return _to_task(row)
 
-    def list(self, *, done: bool | None = None, newest: bool = False) -> list[Task]:
-        """All tasks, or only those whose `done` matches; oldest first unless `newest`.
+    def list(
+        self,
+        *,
+        done: bool | None = None,
+        overdue: bool | None = None,
+        today: date | None = None,
+        newest: bool = False,
+    ) -> list[Task]:
+        """All tasks, or only those matching `done` and `overdue`; oldest first unless `newest`.
+
+        `overdue` needs `today`: a task is overdue when it is not done and due before it.
 
         The order picks one of two fixed statements, so no caller text reaches the SQL.
         Ids grow with creation, so ordering by id is ordering by creation time.
         """
+        if overdue is not None and today is None:
+            raise ValueError("filtering by overdue needs today's date")
         flag = None if done is None else int(done)
+        late = None if overdue is None else int(overdue)
         sql = _LIST_NEWEST_FIRST if newest else _LIST_OLDEST_FIRST
         with self._connect() as conn:
-            rows = conn.execute(sql, (flag, flag)).fetchall()
+            rows = conn.execute(sql, (flag, flag, late, _iso(today), late)).fetchall()
         return [_to_task(row) for row in rows]
 
     def get(self, task_id: int) -> Task | None:
